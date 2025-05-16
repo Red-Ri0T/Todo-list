@@ -49,6 +49,7 @@
             border: 1px solid #ddd;
             border-radius: 4px;
             box-sizing: border-box;
+            -webkit-text-security: disc !important;
         }
         
         button {
@@ -165,7 +166,7 @@
         <h2>API Key</h2>
         <div class="form-group">
             <label for="api-key">Enter your API Key:</label>
-            <input type="password" id="api-key" placeholder="Your API key here">
+            <input type="password" id="api-key" placeholder="Your API key here" style="-webkit-text-security: disc;">
         </div>
     </div>
     
@@ -198,7 +199,7 @@
     
     <script>
         // API base URL - change this to your deployed API URL when ready
-        const API_BASE_URL = 'https://todo.onrender.com/api/todos';
+        const API_BASE_URL = 'https://todo-list-q1o6.onrender.com/api/todos';
         
         // DOM Elements
         const apiKeyInput = document.getElementById('api-key');
@@ -276,6 +277,26 @@
                 todoListContainer.innerHTML = '<div>Failed to load todos.</div>';
             });
         }
+                // Add this JavaScript to ensure the field stays as password type
+        document.addEventListener('DOMContentLoaded', function() {
+            const apiKeyInput = document.getElementById('api-key');
+            
+            // Ensure it's a password field
+            if(apiKeyInput.type !== 'password') {
+                apiKeyInput.type = 'password';
+            }
+            
+            // Optional: Add a monitor to prevent type changes
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if(apiKeyInput.type !== 'password') {
+                        apiKeyInput.type = 'password';
+                    }
+                });
+            });
+            
+            observer.observe(apiKeyInput, { attributes: true });
+        });
         
         // Display todos in the UI
         function displayTodos(todos) {

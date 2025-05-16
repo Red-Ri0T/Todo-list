@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo API Frontend</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        
+        h1, h2 {
+            color: #2c3e50;
+        }
+        
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        input[type="password"], textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        .todo-item {
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .todo-item.completed {
+            border-left-color: #2ecc71;
+            opacity: 0.8;
+        }
+        
+        .todo-item .todo-content {
+            flex-grow: 1;
+        }
+        
+        .todo-item .todo-title {
+            margin: 0 0 5px 0;
+            font-weight: bold;
+        }
+        
+        .todo-item .todo-description {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .todo-item .todo-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .todo-item .todo-actions button {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+        
+        .todo-item .todo-actions button.delete {
+            background-color: #e74c3c;
+        }
+        
+        .todo-item .todo-actions button.delete:hover {
+            background-color: #c0392b;
+        }
+        
+        .todo-item .todo-actions button.toggle {
+            background-color: #2ecc71;
+        }
+        
+        .todo-item .todo-actions button.toggle:hover {
+            background-color: #27ae60;
+        }
+        
+        .todo-item .todo-actions button.toggle.mark {
+            background-color: #f39c12;
+        }
+        
+        .todo-item .todo-actions button.toggle.mark:hover {
+            background-color: #d35400;
+        }
+        
+        .error-message {
+            color: #e74c3c;
+            background-color: #fadbd8;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        
+        .success-message {
+            color: #27ae60;
+            background-color: #d4efdf;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        #api-key-container {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <h1>Todo API Frontend</h1>
+    
+    <div id="api-key-container" class="container">
+        <h2>API Key</h2>
+        <div class="form-group">
+            <label for="api-key">Enter your API Key:</label>
+            <input type="password" id="api-key" placeholder="Your API key here">
+        </div>
+    </div>
+    
+    <div class="container">
+        <h2>Add New Todo</h2>
+        <div id="error-message" class="error-message"></div>
+        <div id="success-message" class="success-message"></div>
+        
+        <div class="form-group">
+            <label for="todo-title">Title:</label>
+            <input type="text" id="todo-title" placeholder="Enter todo title" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="todo-description">Description:</label>
+            <textarea id="todo-description" rows="3" placeholder="Enter todo description"></textarea>
+        </div>
+        
+        <button id="add-todo">Add Todo</button>
+    </div>
+    
+    <div class="container">
+        <h2>Todo List</h2>
+        <button id="refresh-todos">Refresh List</button>
+        <div id="todo-list">
+            <!-- Todos will be displayed here -->
+            <div class="loading">Loading todos...</div>
+        </div>
+    </div>
+    
+    <script>
+        // API base URL - change this to your deployed API URL when ready
+        const API_BASE_URL = 'http://localhost:3000/api/todos';
+        
+        // DOM Elements
+        const apiKeyInput = document.getElementById('api-key');
+        const titleInput = document.getElementById('todo-title');
+        const descriptionInput = document.getElementById('todo-description');
+        const addTodoButton = document.getElementById('add-todo');
+        const refreshButton = document.getElementById('refresh-todos');
+        const todoListContainer = document.getElementById('todo-list');
+        const errorMessage = document.getElementById('error-message');
+        const successMessage = document.getElementById('success-message');
+        
+        // Check if API key is stored in localStorage
+        if (localStorage.getItem('todo_api_key')) {
+            apiKeyInput.value = localStorage.getItem('todo_api_key');
+            fetchTodos(); // Load todos immediately if we have an API key
+        }
+        
+        // Save API key when changed
+        apiKeyInput.addEventListener('change', () => {
+            localStorage.setItem('todo_api_key', apiKeyInput.value);
+        });
+        
+        // Helper function to get the API key
+        function getApiKey() {
+            return apiKeyInput.value.trim();
+        }
+        
+        // Show error message
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            setTimeout(() => {
+                errorMessage.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Show success message
+        function showSuccess(message) {
+            successMessage.textContent = message;
+            successMessage.style.display = 'block';
+            setTimeout(() => {
+                successMessage.style.display = 'none';
+            }, 3000);
+        }
+        
+        // Fetch all todos from the API
+        function fetchTodos() {
+            const apiKey = getApiKey();
+            
+            if (!apiKey) {
+                showError('Please enter your API key');
+                return;
+            }
+            
+            todoListContainer.innerHTML = '<div class="loading">Loading todos...</div>';
+            
+            fetch(API_BASE_URL, {
+                method: 'GET',
+                headers: {
+                    'X-API-Key': apiKey
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error: ${response.status} - ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(todos => {
+                displayTodos(todos);
+            })
+            .catch(error => {
+                console.error('Error fetching todos:', error);
+                showError('Failed to load todos. Check your API key and server connection.');
+                todoListContainer.innerHTML = '<div>Failed to load todos.</div>';
+            });
+        }
+        
+        // Display todos in the UI
+        function displayTodos(todos) {
+            if (todos.length === 0) {
+                todoListContainer.innerHTML = '<div>No todos yet. Add your first todo above!</div>';
+                return;
+            }
+            
+            todoListContainer.innerHTML = '';
+            
+            todos.forEach(todo => {
+                const todoItem = document.createElement('div');
+                todoItem.className = `todo-item ${todo.completed ? 'completed' : ''}`;
+                todoItem.dataset.id = todo.id;
+                
+                const todoContent = document.createElement('div');
+                todoContent.className = 'todo-content';
+                
+                const todoTitle = document.createElement('h3');
+                todoTitle.className = 'todo-title';
+                todoTitle.textContent = todo.title;
+                
+                const todoDescription = document.createElement('p');
+                todoDescription.className = 'todo-description';
+                todoDescription.textContent = todo.description || 'No description';
+                
+                todoContent.appendChild(todoTitle);
+                todoContent.appendChild(todoDescription);
+                
+                const todoActions = document.createElement('div');
+                todoActions.className = 'todo-actions';
+                
+                const toggleButton = document.createElement('button');
+                toggleButton.className = `toggle ${todo.completed ? '' : 'mark'}`;
+                toggleButton.textContent = todo.completed ? 'Unmark' : 'Complete';
+                toggleButton.addEventListener('click', () => toggleTodo(todo.id, !todo.completed));
+                
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'delete';
+                deleteButton.textContent = 'Delete';
+                deleteButton.addEventListener('click', () => deleteTodo(todo.id));
+                
+                todoActions.appendChild(toggleButton);
+                todoActions.appendChild(deleteButton);
+                
+                todoItem.appendChild(todoContent);
+                todoItem.appendChild(todoActions);
+                
+                todoListContainer.appendChild(todoItem);
+            });
+        }
+        
+        // Add a new todo
+        function addTodo() {
+            const title = titleInput.value.trim();
+            const description = descriptionInput.value.trim();
+            const apiKey = getApiKey();
+            
+            if (!apiKey) {
+                showError('Please enter your API key');
+                return;
+            }
+            
+            if (!title) {
+                showError('Title is required');
+                return;
+            }
+            
+            fetch(API_BASE_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': apiKey
+                },
+                body: JSON.stringify({
+                    title: title,
+                    description: description
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error: ${response.status} - ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(newTodo => {
+                showSuccess('Todo added successfully!');
+                titleInput.value = '';
+                descriptionInput.value = '';
+                fetchTodos(); // Refresh the list
+            })
+            .catch(error => {
+                console.error('Error adding todo:', error);
+                showError('Failed to add todo. Please try again.');
+            });
+        }
+        
+        // Toggle todo completion status
+        function toggleTodo(id, completed) {
+            const apiKey = getApiKey();
+            
+            if (!apiKey) {
+                showError('Please enter your API key');
+                return;
+            }
+            
+            fetch(`${API_BASE_URL}/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': apiKey
+                },
+                body: JSON.stringify({
+                    completed: completed
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error: ${response.status} - ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(updatedTodo => {
+                showSuccess('Todo updated successfully!');
+                fetchTodos(); // Refresh the list
+            })
+            .catch(error => {
+                console.error('Error updating todo:', error);
+                showError('Failed to update todo. Please try again.');
+            });
+        }
+        
+        // Delete a todo
+        function deleteTodo(id) {
+            const apiKey = getApiKey();
+            
+            if (!apiKey) {
+                showError('Please enter your API key');
+                return;
+            }
+            
+            if (!confirm('Are you sure you want to delete this todo?')) {
+                return;
+            }
+            
+            fetch(`${API_BASE_URL}/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-API-Key': apiKey
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Error: ${response.status} - ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(result => {
+                showSuccess('Todo deleted successfully!');
+                fetchTodos(); // Refresh the list
+            })
+            .catch(error => {
+                console.error('Error deleting todo:', error);
+                showError('Failed to delete todo. Please try again.');
+            });
+        }
+        
+        // Event Listeners
+        addTodoButton.addEventListener('click', addTodo);
+        refreshButton.addEventListener('click', fetchTodos);
+        
+        // Initial fetch
+        if (getApiKey()) {
+            fetchTodos();
+        }
+    </script>
+</body>
+</html>
